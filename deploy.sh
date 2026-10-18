@@ -220,7 +220,7 @@ for d in \$SHARED; do
 done
 activate "\$ID"
 cur=\$(current)
-ls -1 "\$REL/releases" | sort -r | awk -v k="\$KEEP" 'NR > k' | while read -r old; do
+ls -1 "\$REL/releases" | grep '^[0-9]' | sort -r | awk -v k="\$KEEP" 'NR > k' | while read -r old; do
   [ "\$old" = "\$cur" ] || rm -rf "\$REL/releases/\$old"
 done
 tail -n 50 "\$REL/history" >"\$REL/history.tmp" && mv "\$REL/history.tmp" "\$REL/history"
@@ -233,9 +233,11 @@ out previous-release "${PREV:-}"
 # 4. healthcheck и автооткат
 if ! healthcheck; then
   if is_true "${HD_ROLLBACK_ON_FAILURE:-true}" && [[ -n "$PREV" ]]; then
-    remote "${COMMON_REMOTE[@]}" PREV="$PREV" <<SCRIPT
+    # провалившийся релиз удаляется, чтобы последующий mode: rollback не вернул его из истории
+    remote "${COMMON_REMOTE[@]}" PREV="$PREV" ID="$ID" <<SCRIPT
 $REMOTE_LIB
 activate "\$PREV"
+rm -rf "\$REL/releases/\$ID"
 SCRIPT
     printf '::error title=helios-deploy::выполнен автоматический откат на %s\n' "$PREV"
     out release "$PREV"

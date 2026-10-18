@@ -74,6 +74,10 @@ if GITHUB_SHA=3333333cccc run HD_SOURCE="$W/site" HD_HC_URL=http://127.0.0.1:808
   fail "healthcheck должен был провалиться"
 fi
 [[ "$(page index.html)" == "<p>v2</p>" ]] && pass "healthcheck fail -> автооткат на $R2" || fail "auto-rollback"
+# ручной откат после автоотката не должен вернуть провалившийся релиз
+run HD_MODE=rollback
+[[ "$(page index.html)" == "<p>v1</p>" ]] && pass "rollback пропускает провалившийся релиз" || fail "rollback вернул провалившийся релиз"
+run HD_MODE=rollback HD_ROLLBACK_TO="$R2"
 
 # 5. отказ без known_hosts для чужого хоста
 if env HD_HOST=127.0.0.1 HD_PORT=2222 HD_USER=x HD_KEY=x HD_TARGET=t bash "$DEPLOY" 2>/dev/null; then
@@ -92,7 +96,12 @@ rm "$W/d/old.txt"
 run HD_STRATEGY=direct HD_TARGET=public_html/direct HD_SOURCE="$W/d" HD_DELETE=true
 [[ ! -e ~/public_html/direct/old.txt ]] && pass "direct --delete" || fail "direct --delete"
 
-# 8. remove
+# 8. хранится не больше keep-releases релизов
+for n in 4 5 6; do sleep 1; mk_site "<p>v$n</p>"; GITHUB_SHA=${n}${n}${n}${n}${n}${n}${n} run HD_SOURCE="$W/site" HD_KEEP=2; done
+cnt=$(find ~/.deploy/public_html_site/releases -mindepth 1 -maxdepth 1 -name '[0-9]*' | wc -l)
+[[ $cnt -eq 2 && "$(page index.html)" == "<p>v6</p>" ]] && pass "keep-releases=2 ($cnt релиза)" || fail "keep-releases: $cnt"
+
+# 9. remove
 run HD_MODE=remove
 [[ ! -e ~/public_html/site && ! -e ~/.deploy/public_html_site ]] && pass "remove" || fail "remove"
 
