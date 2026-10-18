@@ -1,0 +1,25 @@
+# При публикации релиза vX.Y.Z переносит подвижный мажорный тег vX на этот коммит.
+name: major-tag
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  move-tag:
+    if: startsWith(github.event.release.tag_name, 'v')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Move vX tag
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          [[ "$TAG" =~ ^v([0-9]+)\.[0-9]+\.[0-9]+$ ]] || { echo "не semver: $TAG"; exit 1; }
+          major="v${BASH_REMATCH[1]}"
+          git tag -f "$major" "$TAG^{}"
+          git push -f origin "refs/tags/$major"
+          echo "$major -> $(git rev-parse "$TAG^{}")" >> "$GITHUB_STEP_SUMMARY"
