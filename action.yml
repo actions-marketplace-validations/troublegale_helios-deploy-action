@@ -1,0 +1,131 @@
+name: "Helios ITMO Static Deploy"
+description: "Выкладка статического сайта на Helios ИТМО (или любой SSH/rsync-хост): атомарные релизы, healthcheck, откат."
+author: "Кожухин Иван Алексеевич (troublegale)"
+
+branding:
+  icon: upload-cloud
+  color: blue
+
+inputs:
+  host:
+    description: "SSH-хост."
+    required: false
+    default: "helios.cs.ifmo.ru"
+  port:
+    description: "SSH-порт."
+    required: false
+    default: "2222"
+  username:
+    description: "Логин на сервере (для Helios — sXXXXXX)."
+    required: true
+  ssh-key:
+    description: "Приватный ключ (deploy-ключ) в формате OpenSSH. Передавайте только через secrets."
+    required: true
+  known-hosts:
+    description: >-
+      Строки known_hosts для хоста. Проверка ключа хоста НЕ отключается никогда.
+      Если пусто и host = helios.cs.ifmo.ru, используется закреплённый в action ключ Helios.
+    required: false
+    default: ""
+  source:
+    description: "Локальный каталог со сборкой сайта."
+    required: false
+    default: "site"
+  target:
+    description: "Путь назначения на сервере, относительно домашнего каталога (например public_html/my-site)."
+    required: true
+  delete:
+    description: "Удалять на сервере файлы, которых нет в source (rsync --delete). Только для strategy: direct."
+    required: false
+    default: "false"
+  strategy:
+    description: >-
+      direct — rsync прямо в target;
+      atomic — загрузка в новый каталог релиза и атомарное переключение симлинка target на него.
+    required: false
+    default: "atomic"
+  mode:
+    description: "deploy — выкладка; rollback — переключить target на предыдущий (или указанный) релиз. Только для atomic."
+    required: false
+    default: "deploy"
+  releases-dir:
+    description: "Каталог релизов на сервере (относительно $HOME). По умолчанию .deploy/<target с / заменёнными на _>."
+    required: false
+    default: ""
+  keep-releases:
+    description: "Сколько последних релизов хранить (для отката)."
+    required: false
+    default: "5"
+  shared-dirs:
+    description: >-
+      Каталоги внутри релиза (через пробел), которые должны переживать переключение релизов —
+      на их место кладётся симлинк в <releases-dir>/shared/<dir>. Например, preview для превью веток.
+    required: false
+    default: ""
+  rollback-to:
+    description: "Идентификатор релиза для отката (mode: rollback). Пусто — предыдущий релиз."
+    required: false
+    default: ""
+  healthcheck-url:
+    description: "URL для проверки после выкладки. Пусто — проверка не выполняется."
+    required: false
+    default: ""
+  healthcheck-contains:
+    description: "Строка, которая должна присутствовать в ответе healthcheck-url."
+    required: false
+    default: ""
+  healthcheck-from:
+    description: "runner — запрос с раннера; remote — curl на самом сервере по SSH (если хостинг недоступен из сети раннера)."
+    required: false
+    default: "runner"
+  healthcheck-retries:
+    description: "Число попыток healthcheck (пауза 5 с)."
+    required: false
+    default: "6"
+  rollback-on-failure:
+    description: "При провале healthcheck вернуть предыдущий релиз (только atomic) и завершить job с ошибкой."
+    required: false
+    default: "true"
+  rsync-args:
+    description: "Дополнительные аргументы rsync."
+    required: false
+    default: ""
+
+outputs:
+  release:
+    description: "Идентификатор активного релиза после выполнения (atomic)."
+    value: ${{ steps.run.outputs.release }}
+  previous-release:
+    description: "Идентификатор релиза, активного до выполнения (atomic)."
+    value: ${{ steps.run.outputs.previous-release }}
+  duration:
+    description: "Длительность доставки, секунд."
+    value: ${{ steps.run.outputs.duration }}
+
+runs:
+  using: composite
+  steps:
+    - id: run
+      shell: bash
+      run: bash "$GITHUB_ACTION_PATH/deploy.sh"
+      env:
+        HD_HOST: ${{ inputs.host }}
+        HD_PORT: ${{ inputs.port }}
+        HD_USER: ${{ inputs.username }}
+        HD_KEY: ${{ inputs.ssh-key }}
+        HD_KNOWN_HOSTS: ${{ inputs.known-hosts }}
+        HD_SOURCE: ${{ inputs.source }}
+        HD_TARGET: ${{ inputs.target }}
+        HD_DELETE: ${{ inputs.delete }}
+        HD_STRATEGY: ${{ inputs.strategy }}
+        HD_MODE: ${{ inputs.mode }}
+        HD_RELEASES_DIR: ${{ inputs.releases-dir }}
+        HD_KEEP: ${{ inputs.keep-releases }}
+        HD_SHARED: ${{ inputs.shared-dirs }}
+        HD_ROLLBACK_TO: ${{ inputs.rollback-to }}
+        HD_HC_URL: ${{ inputs.healthcheck-url }}
+        HD_HC_CONTAINS: ${{ inputs.healthcheck-contains }}
+        HD_HC_FROM: ${{ inputs.healthcheck-from }}
+        HD_HC_RETRIES: ${{ inputs.healthcheck-retries }}
+        HD_ROLLBACK_ON_FAILURE: ${{ inputs.rollback-on-failure }}
+        HD_RSYNC_ARGS: ${{ inputs.rsync-args }}
