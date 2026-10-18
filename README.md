@@ -67,7 +67,7 @@ jobs:
 | `target` | — (обязателен) | путь назначения относительно `$HOME`, например `public_html/site` |
 | `delete` | `false` | `rsync --delete` (для `strategy: direct`; в `atomic` каждый релиз чистый) |
 | `strategy` | `atomic` | `atomic` — релизы и симлинк; `direct` — rsync в каталог |
-| `mode` | `deploy` | `deploy`, `rollback`, `remove` (удалить сайт и его релизы) |
+| `mode` | `deploy` | `deploy`, `rollback`, `status` (релизы, история, активный релиз), `remove` (удалить сайт и его релизы) |
 | `releases-dir` | `.deploy/<target>` | каталог релизов относительно `$HOME` |
 | `keep-releases` | `5` | сколько релизов хранить |
 | `shared-dirs` | — | каталоги внутри релиза, заменяемые симлинками на `<releases-dir>/shared/<dir>` |

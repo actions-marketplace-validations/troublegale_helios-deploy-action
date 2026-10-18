@@ -41,7 +41,7 @@ done
 [[ "$HD_PORT" =~ ^[0-9]+$ ]] || die "некорректный port"
 [[ "$HD_KEEP" =~ ^[0-9]+$ && "$HD_KEEP" -ge 1 ]] || die "keep-releases должно быть целым >= 1"
 case "$HD_STRATEGY" in direct|atomic) ;; *) die "strategy: direct | atomic" ;; esac
-case "$HD_MODE" in deploy|rollback|remove) ;; *) die "mode: deploy | rollback | remove" ;; esac
+case "$HD_MODE" in deploy|rollback|remove|status) ;; *) die "mode: deploy | rollback | remove | status" ;; esac
 [[ "$HD_MODE" != deploy && "$HD_STRATEGY" != atomic ]] && die "mode: $HD_MODE доступен только для strategy: atomic"
 
 TARGET=${HD_TARGET%/}
@@ -146,6 +146,28 @@ if [[ "$HD_STRATEGY" == direct ]]; then
   healthcheck
   out duration "$(( $(date +%s) - START ))"
   summary
+  exit 0
+fi
+
+# ---------- atomic: status ----------
+if [[ "$HD_MODE" == status ]]; then
+  res=$(remote "${COMMON_REMOTE[@]}" <<SCRIPT
+$REMOTE_LIB
+echo "target: \$TARGET -> \$(readlink "\$TARGET" 2>/dev/null || echo '<нет симлинка>')"
+echo "releases (\$REL/releases):"
+for r in \$(ls -1 "\$REL/releases" 2>/dev/null | sort); do
+  mark=""; [ "\$r" = "\$(current)" ] && mark=" <- active"
+  echo "  \$r  \$(du -sk "\$REL/releases/\$r" | cut -f1) KB  \$(find "\$REL/releases/\$r" -type f | wc -l | tr -d ' ') files\$mark"
+done
+echo "history (последние 10 активаций):"
+tail -n 10 "\$REL/history" 2>/dev/null | sed 's/^/  /'
+SCRIPT
+)
+  printf '%s\n' "$res"
+  if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+    { echo '### Helios deploy: status'; echo '```'; printf '%s\n' "$res"; echo '```'; } >>"$GITHUB_STEP_SUMMARY"
+  fi
+  out release "$(sed -n 's#^target: .* -> .*/##p' <<<"$res")"
   exit 0
 fi
 

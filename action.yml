@@ -45,7 +45,7 @@ inputs:
     required: false
     default: "atomic"
   mode:
-    description: "deploy — выкладка; rollback — переключить target на предыдущий (или указанный) релиз. Только для atomic."
+    description: "deploy — выкладка; rollback — переключить target на предыдущий (или указанный) релиз; status — показать релизы и историю; remove — удалить сайт и релизы. Кроме deploy — только для atomic."
     required: false
     default: "deploy"
   releases-dir:

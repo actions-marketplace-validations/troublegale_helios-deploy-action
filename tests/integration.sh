@@ -101,6 +101,9 @@ for n in 4 5 6; do sleep 1; mk_site "<p>v$n</p>"; GITHUB_SHA=${n}${n}${n}${n}${n
 cnt=$(find ~/.deploy/public_html_site/releases -mindepth 1 -maxdepth 1 -name '[0-9]*' | wc -l)
 [[ $cnt -eq 2 && "$(page index.html)" == "<p>v6</p>" ]] && pass "keep-releases=2 ($cnt релиза)" || fail "keep-releases: $cnt"
 
+# status
+run HD_MODE=status | grep -q "<- active" && pass "status показывает активный релиз" || fail "status"
+
 # 9. remove
 run HD_MODE=remove
 [[ ! -e ~/public_html/site && ! -e ~/.deploy/public_html_site ]] && pass "remove" || fail "remove"
